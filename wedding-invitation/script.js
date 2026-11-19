@@ -36,18 +36,45 @@
   const musicWidget = document.getElementById('music-widget');
   if (config.backgroundMusic) {
     audio.src = config.backgroundMusic;
+    audio.preload = 'auto';
     musicWidget.hidden = false;
+    let userPaused = false;
+    let started = false;
+    const gestureEvents = ['pointerdown', 'pointerup', 'mousedown', 'touchend', 'keydown', 'click'];
     const updateMusicControl = playing => {
       sound.setAttribute('aria-pressed', String(playing));
       sound.setAttribute('aria-label', playing ? 'Pause background music' : 'Play background music');
       document.getElementById('sound-label').textContent = playing ? 'MUSIC ON' : 'TAP FOR MUSIC';
     };
+    const removeGestureListeners = () => gestureEvents.forEach(type => document.removeEventListener(type, onFirstGesture, true));
+    const startMusic = async automatic => {
+      try {
+        await audio.play();
+        if (userPaused) { audio.pause(); return; }
+        started = true;
+        removeGestureListeners();
+        updateMusicControl(true);
+      } catch {
+        // Browsers may block sound before a gesture. Keep the button available.
+        if (audio.paused) {
+          updateMusicControl(false);
+          if (!automatic && audio.error) document.getElementById('sound-label').textContent = 'AUDIO UNAVAILABLE';
+        }
+      }
+    };
+    function onFirstGesture(event) {
+      // The music button has its own play/pause handler; avoid double-toggling it.
+      if (userPaused || started || (event.target && event.target.closest && event.target.closest('#music-widget'))) return;
+      startMusic(true);
+    }
+    gestureEvents.forEach(type => document.addEventListener(type, onFirstGesture, true));
     sound.addEventListener('click', async () => {
-      if (audio.paused) {
-        try { await audio.play(); updateMusicControl(true); }
-        catch { updateMusicControl(false); document.getElementById('sound-label').textContent = 'AUDIO UNAVAILABLE'; }
-      } else { audio.pause(); updateMusicControl(false); }
+      removeGestureListeners();
+      if (audio.paused) { userPaused = false; await startMusic(false); }
+      else { userPaused = true; audio.pause(); updateMusicControl(false); }
     });
+    // Attempt sound immediately. When the browser blocks it, retry on the first interaction.
+    startMusic(true);
   }
   // Scratch covers are added only when JavaScript and canvas are available.
   // The actual invitation remains readable without JavaScript.
