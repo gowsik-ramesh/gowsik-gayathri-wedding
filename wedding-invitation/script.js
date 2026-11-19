@@ -56,7 +56,7 @@
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx || !('PointerEvent' in window)) return;
     document.querySelector('.scratch-instruction').hidden = false;
-    const coverTitle = `Celebration ${String(index + 1).padStart(2, '0')}`;
+    const coverTitle = index === 0 ? 'An Evening of Joy' : 'A Sacred Beginning';
     const details = document.createElement('div');
     details.className = 'event-details';
     while (card.firstChild) details.appendChild(card.firstChild);
@@ -93,8 +93,8 @@
       for (let x = 28; x < width; x += 28) for (let y = 28; y < height; y += 28) { ctx.beginPath(); ctx.arc(x, y, .7, 0, Math.PI * 2); ctx.fill(); }
       ctx.textAlign = 'center'; ctx.fillStyle = '#e7c88e';
       ctx.font = '19px Georgia, serif'; ctx.fillText('✦', width / 2, height * .25);
-      ctx.fillStyle = '#fff0d8'; ctx.font = `500 ${Math.min(27, width * .09)}px Georgia, serif`; ctx.fillText(coverTitle, width / 2, height * .43);
-      ctx.font = `${Math.min(10, width / 22)}px Arial, sans-serif`; ctx.fillStyle = '#e6c697'; ctx.fillText('S C R A T C H   T O   R E V E A L', width / 2, height * .55);
+      ctx.fillStyle = '#fff0d8'; ctx.font = `500 ${Math.min(25, width * .10)}px Georgia, serif`; ctx.fillText(coverTitle, width / 2, height * .43, width * .85);
+      ctx.font = `${Math.min(10, width / 22)}px Arial, sans-serif`; ctx.fillStyle = '#e6c697'; ctx.fillText('S C R A T C H   T O   R E V E A L', width / 2, height * .55, width * .85);
     };
     const revealCard = () => {
       if (revealed) return;
@@ -112,7 +112,7 @@
     const scratch = event => {
       const rect = canvas.getBoundingClientRect();
       const point = { x: (event.clientX - rect.left) * width / rect.width, y: (event.clientY - rect.top) * height / rect.height };
-      ctx.globalCompositeOperation = 'destination-out'; ctx.lineWidth = 38; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.globalCompositeOperation = 'destination-out'; ctx.lineWidth = Math.min(90, Math.max(60, width * .24)); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       ctx.beginPath(); ctx.moveTo(previous ? previous.x : point.x, previous ? previous.y : point.y); ctx.lineTo(point.x, point.y); ctx.stroke();
       previous = point;
     };
@@ -120,10 +120,16 @@
       const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
       let transparent = 0, total = 0;
       for (let i = 3; i < pixels.length; i += 64) { total++; if (pixels[i] < 128) transparent++; }
-      if (transparent / total > .32) revealCard();
+      if (transparent / total > .12) revealCard();
     };
+    let lastProgressCheck = 0;
     canvas.addEventListener('pointerdown', event => { event.preventDefault(); drawing = true; previous = null; canvas.setPointerCapture(event.pointerId); scratch(event); });
-    canvas.addEventListener('pointermove', event => { if (drawing) { event.preventDefault(); scratch(event); } });
+    canvas.addEventListener('pointermove', event => {
+      if (!drawing) return;
+      event.preventDefault(); scratch(event);
+      const now = performance.now();
+      if (now - lastProgressCheck > 120) { lastProgressCheck = now; checkProgress(); }
+    });
     const finish = () => { if (drawing) { drawing = false; previous = null; checkProgress(); } };
     canvas.addEventListener('pointerup', finish); canvas.addEventListener('pointercancel', finish);
     let keyboardPass = 0;
@@ -131,12 +137,12 @@
       if ((event.key !== ' ' && event.key !== 'Enter') || revealed) return;
       event.preventDefault();
       ctx.globalCompositeOperation = 'destination-out';
-      ctx.lineWidth = height / 5; ctx.lineCap = 'round';
-      const y = height * (.125 + keyboardPass * .25);
+      ctx.lineWidth = height / 3.5; ctx.lineCap = 'round';
+      const y = height * (.25 + keyboardPass * .5);
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
       keyboardPass++;
-      if (keyboardPass >= 4) revealCard();
-      else canvas.setAttribute('aria-label', `${coverTitle}: ${keyboardPass} of 4 scratch strokes complete. Press Space again to continue.`);
+      if (keyboardPass >= 2) revealCard();
+      else canvas.setAttribute('aria-label', `${coverTitle}: ${keyboardPass} of 2 scratch strokes complete. Press Space again to continue.`);
     });
     drawCover();
     if ('ResizeObserver' in window) {
