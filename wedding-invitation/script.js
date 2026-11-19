@@ -34,31 +34,19 @@
   const audio = document.getElementById('background-audio');
   const sound = document.getElementById('sound');
   const musicWidget = document.getElementById('music-widget');
-  const musicTrack = document.getElementById('music-track');
   if (config.backgroundMusic) {
-    const tracks = [{ name: config.backgroundMusicName || 'Wedding music', src: config.backgroundMusic }, ...(Array.isArray(config.additionalMusic) ? config.additionalMusic.filter(track => track && track.name && track.src) : [])];
-    audio.src = tracks[0].src;
+    audio.src = config.backgroundMusic;
     musicWidget.hidden = false;
-    tracks.forEach((track, index) => { const option = document.createElement('option'); option.value = String(index); option.textContent = track.name; musicTrack.appendChild(option); });
-    musicTrack.hidden = tracks.length < 2;
     const updateMusicControl = playing => {
       sound.setAttribute('aria-pressed', String(playing));
       sound.setAttribute('aria-label', playing ? 'Pause background music' : 'Play background music');
       document.getElementById('sound-label').textContent = playing ? 'MUSIC ON' : 'TAP FOR MUSIC';
     };
-    const playMusic = async () => {
-      try { await audio.play(); updateMusicControl(true); }
-      catch { updateMusicControl(false); document.getElementById('sound-label').textContent = 'AUDIO UNAVAILABLE'; }
-    };
     sound.addEventListener('click', async () => {
-      if (audio.paused) await playMusic();
-      else { audio.pause(); updateMusicControl(false); }
-    });
-    musicTrack.addEventListener('change', async () => {
-      const wasPlaying = !audio.paused;
-      audio.pause(); audio.src = tracks[Number(musicTrack.value)].src; audio.load();
-      updateMusicControl(false);
-      if (wasPlaying) await playMusic();
+      if (audio.paused) {
+        try { await audio.play(); updateMusicControl(true); }
+        catch { updateMusicControl(false); document.getElementById('sound-label').textContent = 'AUDIO UNAVAILABLE'; }
+      } else { audio.pause(); updateMusicControl(false); }
     });
   }
   // Scratch covers are added only when JavaScript and canvas are available.
